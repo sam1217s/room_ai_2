@@ -574,3 +574,4 @@ def MotorIA() -> RoomMatchIAEngine:
     else:
         logger.warning("⚠️ Motor IA sin modelos. Ejecutar entrenamiento.")
     return motor
+
