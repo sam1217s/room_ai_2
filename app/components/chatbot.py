@@ -111,8 +111,14 @@ def mostrar_mensaje_usuario(contenido, timestamp):
     """, unsafe_allow_html=True)
 
 def mostrar_mensaje_bot(contenido, timestamp, datos=None):
-    """Mensaje del bot - COMPLETAMENTE ARREGLADO"""
+    """Mensaje del bot - ARREGLADO SIN HTML RESIDUAL"""
     hora = timestamp.strftime("%H:%M")
+    
+    # Limpiar contenido de asteriscos de markdown
+    contenido_limpio = contenido.replace('**', '').replace('*', '')
+    
+    # Convertir a HTML limpio
+    contenido_html = contenido_limpio.replace('\n', '<br>')
     
     # Mensaje principal del bot
     st.markdown(f"""
@@ -126,7 +132,7 @@ def mostrar_mensaje_bot(contenido, timestamp, datos=None):
                 <span style='font-weight: bold; color: #667eea;'>RoomBot IA</span>
             </div>
             <div style='color: #333333; line-height: 1.6;'>
-                {contenido}
+                {contenido_html}
             </div>
             <div style='font-size: 0.75rem; color: #888; margin-top: 0.8rem;'>
                 {hora}
@@ -287,7 +293,7 @@ def generar_respuesta_avanzada(mensaje, motor_ia):
         return respuesta, None
 
 def generar_estadisticas_detalladas(df):
-    """Genera estadísticas MUY DETALLADAS"""
+    """Genera estadísticas MUY DETALLADAS SIN ASTERISCOS"""
     
     if df.empty:
         return "❌ No hay inquilinos registrados en el sistema."
@@ -296,26 +302,26 @@ def generar_estadisticas_detalladas(df):
     edad_promedio = df['edad'].mean() if 'edad' in df else 0
     edad_mediana = df['edad'].median() if 'edad' in df else 0
     
-    respuesta = f"""📊 **ANÁLISIS ESTADÍSTICO COMPLETO DEL SISTEMA**
+    respuesta = f"""📊 ANÁLISIS ESTADÍSTICO COMPLETO DEL SISTEMA
 
-🔢 **MÉTRICAS GENERALES:**
-• **Total de inquilinos registrados**: {total}
-• **Edad promedio**: {edad_promedio:.1f} años
-• **Edad mediana**: {edad_mediana:.1f} años
-• **Rango de edades**: {df['edad'].min():.0f} - {df['edad'].max():.0f} años
+🔢 MÉTRICAS GENERALES:
+• Total de inquilinos registrados: {total}
+• Edad promedio: {edad_promedio:.1f} años
+• Edad mediana: {edad_mediana:.1f} años
+• Rango de edades: {df['edad'].min():.0f} - {df['edad'].max():.0f} años
 
-📈 **DISTRIBUCIÓN POR CARACTERÍSTICAS:**
+📈 DISTRIBUCIÓN POR CARACTERÍSTICAS:
 """
     
     # Analizar cada categoría en detalle
     categorias = {
-        'fumador': '🚬 **Hábito de Fumar**',
-        'mascotas': '🐕 **Mascotas**', 
-        'orden': '🧹 **Nivel de Orden**',
-        'deporte': '⚽ **Actividad Deportiva**',
-        'bioritmo': '⏰ **Ritmo de Vida**',
-        'nivel_educativo': '🎓 **Nivel Educativo**',
-        'personalidad': '😊 **Personalidad**'
+        'fumador': '🚬 Hábito de Fumar',
+        'mascotas': '🐕 Mascotas', 
+        'orden': '🧹 Nivel de Orden',
+        'deporte': '⚽ Actividad Deportiva',
+        'bioritmo': '⏰ Ritmo de Vida',
+        'nivel_educativo': '🎓 Nivel Educativo',
+        'personalidad': '😊 Personalidad'
     }
     
     for categoria, titulo in categorias.items():
@@ -333,19 +339,19 @@ def generar_estadisticas_detalladas(df):
         compatibles = (df['compatible'] == 1).sum()
         porcentaje_compat = (compatibles / total) * 100
         respuesta += f"""
-🎯 **ÍNDICE DE COMPATIBILIDAD GENERAL:**
-• **Inquilinos altamente compatibles**: {compatibles} de {total} ({porcentaje_compat:.1f}%)
-• **Potencial de matches exitosos**: {'Alto' if porcentaje_compat > 50 else 'Medio' if porcentaje_compat > 30 else 'Bajo'}
+🎯 ÍNDICE DE COMPATIBILIDAD GENERAL:
+• Inquilinos altamente compatibles: {compatibles} de {total} ({porcentaje_compat:.1f}%)
+• Potencial de matches exitosos: {'Alto' if porcentaje_compat > 50 else 'Medio' if porcentaje_compat > 30 else 'Bajo'}
 """
     
     # Insights adicionales
     respuesta += f"""
-💡 **INSIGHTS CLAVE:**
-• **Perfil predominante**: {obtener_perfil_predominante(df)}
-• **Oportunidades de matching**: {obtener_oportunidades_matching(df)}
-• **Recomendación del sistema**: {obtener_recomendacion_sistema(df)}
+💡 INSIGHTS CLAVE:
+• Perfil predominante: {obtener_perfil_predominante(df)}
+• Oportunidades de matching: {obtener_oportunidades_matching(df)}
+• Recomendación del sistema: {obtener_recomendacion_sistema(df)}
 
-📊 *Consulta las gráficas circulares detalladas abajo para visualizar mejor los datos*
+📊 Consulta las gráficas circulares detalladas abajo para visualizar mejor los datos
 """
     
     return respuesta
@@ -463,7 +469,7 @@ def crear_grafica_compatibilidad(df):
     st.plotly_chart(fig, use_container_width=True)
 
 def generar_compatibilidad_detallada(id1, id2, df, motor_ia):
-    """Análisis de compatibilidad SÚPER DETALLADO"""
+    """Análisis de compatibilidad SÚPER DETALLADO SIN ASTERISCOS"""
     
     if df.empty:
         return "❌ No hay inquilinos registrados para analizar."
@@ -520,38 +526,38 @@ def generar_compatibilidad_detallada(id1, id2, df, motor_ia):
                     'impacto': obtener_impacto_factor(factor)
                 })
         
-        # Generar respuesta detallada
-        respuesta = f"""🤝 **ANÁLISIS COMPLETO DE COMPATIBILIDAD**
+        # Generar respuesta limpia SIN ASTERISCOS
+        respuesta = f"""🤝 ANÁLISIS COMPLETO DE COMPATIBILIDAD
 
-👤 **INQUILINOS ANALIZADOS:**
-• **{nombre1}** (ID: {id1}) - Edad: {row1.get('edad', 'N/A')} años
-• **{nombre2}** (ID: {id2}) - Edad: {row2.get('edad', 'N/A')} años
+👤 INQUILINOS ANALIZADOS:
+• {nombre1} (ID: {id1}) - Edad: {row1.get('edad', 'N/A')} años
+• {nombre2} (ID: {id2}) - Edad: {row2.get('edad', 'N/A')} años
 
-📊 **RESULTADO DE COMPATIBILIDAD:**
-• **Puntuación General**: {compatibilidad:.1f}%
-• **Coincidencias**: {coincidencias} de {len(analisis_factores)} factores
-• **Nivel de Confianza**: {'Alto' if compatibilidad >= 70 else 'Medio' if compatibilidad >= 50 else 'Bajo'}
+📊 RESULTADO DE COMPATIBILIDAD:
+• Puntuación General: {compatibilidad:.1f}%
+• Coincidencias: {coincidencias} de {len(analisis_factores)} factores
+• Nivel de Confianza: {'Alto' if compatibilidad >= 70 else 'Medio' if compatibilidad >= 50 else 'Bajo'}
 
-🔍 **ANÁLISIS DETALLADO POR FACTOR:**
+🔍 ANÁLISIS DETALLADO POR FACTOR:
 """
         
         for analisis in analisis_factores:
             icono = "✅" if analisis['coincide'] else "❌"
-            respuesta += f"\n**{analisis['factor'].title()}** ({analisis['impacto']}):\n"
+            respuesta += f"\n{analisis['factor'].title()} ({analisis['impacto']}):\n"
             respuesta += f"   {icono} {nombre1}: {analisis['inquilino1']} | {nombre2}: {analisis['inquilino2']}\n"
         
         # Recomendación específica
         if compatibilidad >= 85:
-            respuesta += f"\n🏆 **RECOMENDACIÓN**: ¡Excelente match! Esta combinación tiene muy alta probabilidad de éxito."
+            respuesta += f"\n🏆 RECOMENDACIÓN: ¡Excelente match! Esta combinación tiene muy alta probabilidad de éxito."
         elif compatibilidad >= 70:
-            respuesta += f"\n👍 **RECOMENDACIÓN**: Buena compatibilidad. Recomendable como roommates."
+            respuesta += f"\n👍 RECOMENDACIÓN: Buena compatibilidad. Recomendable como roommates."
         elif compatibilidad >= 50:
-            respuesta += f"\n⚠️ **RECOMENDACIÓN**: Compatibilidad moderada. Evaluar factores específicos importantes para cada uno."
+            respuesta += f"\n⚠️ RECOMENDACIÓN: Compatibilidad moderada. Evaluar factores específicos importantes para cada uno."
         else:
-            respuesta += f"\n❌ **RECOMENDACIÓN**: Baja compatibilidad. Considerar otros candidatos."
+            respuesta += f"\n❌ RECOMENDACIÓN: Baja compatibilidad. Considerar otros candidatos."
         
         # Consejos específicos
-        respuesta += f"\n\n💡 **CONSEJOS PARA LA CONVIVENCIA:**"
+        respuesta += f"\n\n💡 CONSEJOS PARA LA CONVIVENCIA:"
         respuesta += obtener_consejos_convivencia(analisis_factores, compatibilidad)
         
         return respuesta
@@ -560,7 +566,7 @@ def generar_compatibilidad_detallada(id1, id2, df, motor_ia):
         return f"❌ Error calculando compatibilidad detallada: {str(e)}"
 
 def generar_recomendaciones_detalladas(id_inquilino, df, motor_ia):
-    """Recomendaciones MUY DETALLADAS"""
+    """Recomendaciones MUY DETALLADAS SIN ASTERISCOS"""
     
     if df.empty:
         return "❌ No hay inquilinos registrados para analizar."
@@ -612,35 +618,39 @@ def generar_recomendaciones_detalladas(id_inquilino, df, motor_ia):
         # Ordenar por compatibilidad
         recomendaciones.sort(key=lambda x: x['compatibilidad'], reverse=True)
         
-        # Generar respuesta detallada
-        respuesta = f"""🏆 **RECOMENDACIONES DETALLADAS PARA {nombre_base}** (ID: {id_inquilino})
+        # Generar respuesta limpia SIN ASTERISCOS
+        respuesta = f"""🏆 RECOMENDACIONES DETALLADAS PARA {nombre_base} (ID: {id_inquilino})
 
-👤 **PERFIL BASE:**
+👤 PERFIL BASE:
 • Edad: {inquilino_base.get('edad', 'N/A')} años
 • Características: {obtener_perfil_resumen(inquilino_base)}
 
-🎯 **TOP 5 MATCHES RECOMENDADOS:**
+🎯 TOP 5 MATCHES RECOMENDADOS:
 """
         
         for i, rec in enumerate(recomendaciones[:5], 1):
+            factores_texto = ', '.join(rec['factores_comunes'][:3]) if rec['factores_comunes'] else 'Ninguno'
+            diferencias_texto = ', '.join(rec['diferencias'][:2]) if rec['diferencias'] else 'Ninguna'
+            
             respuesta += f"""
-**{i}. {rec['nombre']}** (ID: {rec['id']}) - {rec['compatibilidad']:.1f}% compatibilidad
+{i}. {rec['nombre']} (ID: {rec['id']}) - {rec['compatibilidad']:.1f}% compatibilidad
    📊 Edad: {rec['edad']} años
-   ✅ En común: {', '.join(rec['factores_comunes'][:3])}
-   ⚠️ Diferencias: {', '.join(rec['diferencias'][:2])}
+   ✅ En común: {factores_texto}
+   ⚠️ Diferencias: {diferencias_texto}
    🔖 Perfil: {rec['perfil']}
 """
         
         # Análisis estadístico
         avg_compatibility = sum(r['compatibilidad'] for r in recomendaciones[:10]) / min(len(recomendaciones), 10)
+        mejores_opciones = len([r for r in recomendaciones if r['compatibilidad'] >= 70])
         
         respuesta += f"""
-📈 **ANÁLISIS ESTADÍSTICO:**
-• **Compatibilidad promedio**: {avg_compatibility:.1f}%
-• **Mejores opciones disponibles**: {len([r for r in recomendaciones if r['compatibilidad'] >= 70])}
-• **Recomendación del sistema**: {'Excelentes opciones disponibles' if avg_compatibility >= 60 else 'Opciones moderadas, evaluar cuidadosamente'}
+📈 ANÁLISIS ESTADÍSTICO:
+• Compatibilidad promedio: {avg_compatibility:.1f}%
+• Mejores opciones disponibles: {mejores_opciones}
+• Recomendación del sistema: {'Excelentes opciones disponibles' if avg_compatibility >= 60 else 'Opciones moderadas, evaluar cuidadosamente'}
 
-💡 *Analiza en detalle cualquier pareja específica para obtener más información*
+💡 Analiza en detalle cualquier pareja específica para obtener más información
 """
         
         return respuesta
