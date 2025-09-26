@@ -1,0 +1,75 @@
+# ============================================
+# 📦 RoomMatchAI - .gitignore
+# ============================================
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+.roomai2/
+roomai2/
+*.egg-info/
+
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs y cache
+*.log
+*.out
+*.err
+*.dat
+*.tmp
+*.bak
+*.swp
+.cache/
+.ipynb_checkpoints/
+
+# Modelos entrenados y datasets
+models/
+*.pkl
+*.joblib
+*.sav
+*.h5
+*.onnx
+*.npy
+*.npz
+*.csv
+*.xlsx
+
+# Archivos sensibles de configuración
+.env
+*.env
+.env.local
+config.json
+secrets.json
+
+# Directorios de Streamlit y sesiones
+.streamlit/
+**/.streamlit/
+
+# Archivos de respaldo
+backups/
+*.bak
+*.old
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos de IDEs y editores
+.vscode/
+.idea/
+*.code-workspace
+
+# Reportes y exportaciones
+*.pdf
+*.docx
+*.pptx
+*.rtf
+
+# ============================================
+# Fin del .gitignore
+# ============================================

@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  roommatchai:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/
+      - MONGO_DB=roommatch
+      - DEBUG=false
+    depends_on:
+      - mongo
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:5.0
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=roommatch
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
