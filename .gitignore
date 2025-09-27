@@ -4,7 +4,6 @@
 
 # Entornos virtuales
 venv/
-env/
 .venv/
 .roomai2/
 roomai2/
@@ -40,7 +39,6 @@ models/
 
 # Archivos sensibles de configuración
 *
-.env.local
 config.json
 secrets.json
 
