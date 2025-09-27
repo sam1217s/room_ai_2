@@ -39,7 +39,7 @@ models/
 *.xlsx
 
 # Archivos sensibles de configuración
-*.env
+*
 .env.local
 config.json
 secrets.json
