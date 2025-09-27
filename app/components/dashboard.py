@@ -10,20 +10,19 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import logging
 
-from ..core.database import obtener_todos_inquilinos
+from app.core.database import db_manager   # ✅ importar instancia global
 
 logger = logging.getLogger(__name__)
 
 # ============================================================================
 # FUNCIÓN PRINCIPAL
 # ============================================================================
-
 def mostrar_dashboard_completo(motor_ia):
     """
     📊 Dashboard completo con analítica avanzada
     """
-    # Cargar datos
-    inquilinos_data = obtener_todos_inquilinos()
+    # Cargar datos desde DB
+    inquilinos_data = db_manager.obtener_todos_inquilinos()
     if not inquilinos_data:
         st.warning("⚠️ No hay datos registrados en la base.")
         return
@@ -37,7 +36,7 @@ def mostrar_dashboard_completo(motor_ia):
     </div>
     """, unsafe_allow_html=True)
 
-    # Tabs principales (solo 2 ahora 🚀)
+    # Tabs principales
     tab1, tab2 = st.tabs([
         "📋 Resumen General",
         "🧠 IA y Patrones"
@@ -53,7 +52,6 @@ def mostrar_dashboard_completo(motor_ia):
 # ============================================================================
 # SECCIÓN 1: MÉTRICAS Y DISTRIBUCIÓN
 # ============================================================================
-
 def _mostrar_resumen_general(df: pd.DataFrame, motor_ia):
     """Resumen general del sistema"""
     st.subheader("📋 Resumen Ejecutivo")
@@ -142,7 +140,6 @@ def _mapa_correlaciones(df: pd.DataFrame):
 # ============================================================================
 # SECCIÓN 2: PATRONES DE IA
 # ============================================================================
-
 def _mostrar_patrones(df: pd.DataFrame, motor_ia):
     """Patrones descubiertos por IA"""
     st.subheader("🧠 Patrones Descubiertos")
@@ -162,7 +159,6 @@ def _mostrar_patrones(df: pd.DataFrame, motor_ia):
 
     else:
         st.info("⚠️ No hay datos de importancia de características disponibles.")
-
 
 
 def _plot_importancia(importances: dict):

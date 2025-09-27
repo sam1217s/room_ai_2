@@ -1,99 +1,83 @@
-# app/core/inquilino_schema.py
-from pydantic import BaseModel, Field, validator
-from typing import Optional
-from datetime import datetime
+import itertools
 import random
-import uuid
+from datetime import datetime
+from pydantic import BaseModel, Field
 
+# 🔥 Generador global de IDs incrementales desde 1000
+_id_generator = itertools.count(1)
+
+def generar_cedula():
+    """Genera una cédula simulada de 8 a 10 dígitos"""
+    return random.randint(10_000_000, 9_999_999_999)
 
 class Inquilino(BaseModel):
-    """
-    🎯 Esquema de datos para un Inquilino
-    Se valida antes de insertar en MongoDB
-    """
+    # Identificación
+    id_inquilino: int = Field(default_factory=lambda: next(_id_generator))
+    cedula: int = Field(default_factory=generar_cedula)
 
-    id_inquilino: int = Field(..., gt=0, description="ID único del inquilino")
-    nombre: str = Field(..., min_length=2, max_length=50, description="Nombre completo")
-    edad: int = Field(..., ge=18, le=70, description="Edad entre 18 y 70")
-    genero: str = Field(..., pattern="^(masculino|femenino|otro)$", description="Género")
+    # Datos personales
+    nombre: str
+    edad: int
+    genero: str
 
-    fumador: str = Field(..., pattern="^(si|no)$", description="¿Es fumador?")
-    mascotas: str = Field(..., pattern="^(con mascotas|sin mascotas)$", description="Mascotas")
-    orden: str = Field(..., pattern="^(ordenada|desordenada)$", description="Nivel de orden")
-    deporte: str = Field(..., pattern="^(si|no)$", description="¿Practica deporte?")
-    bioritmo: str = Field(..., pattern="^(madrugador|nocturno)$", description="Ritmo de vida")
+    # Hábitos y estilo de vida
+    fumador: str
+    mascotas: str
+    orden: str
+    deporte: str
+    bioritmo: str
 
-    nivel_educativo: Optional[str] = Field(None, description="Nivel educativo")
-    musica_tipo: Optional[str] = Field(None, description="Preferencia musical")
-    plan_perfecto: Optional[str] = Field(None, description="Plan perfecto de fin de semana")
-    visitas: Optional[str] = Field(None, pattern="^(si|no)$", description="¿Recibe visitas?")
-    personalidad: Optional[str] = Field(None, description="Tipo de personalidad")
-    instrumento: Optional[str] = Field(None, pattern="^(si|no)$", description="¿Toca algún instrumento?")
+    # Información adicional
+    nivel_educativo: str | None = None
+    musica_tipo: str | None = None
+    plan_perfecto: str | None = None
+    visitas: str | None = None
+    personalidad: str | None = None
+    instrumento: str | None = None
 
-    compatible: int = Field(..., ge=0, le=1, description="Etiqueta binaria de compatibilidad")
+    # Sistema
+    compatible: int = 0
+    rol: str = "inquilino"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # ==========================
-    # VALIDACIONES PERSONALIZADAS
-    # ==========================
-    @validator("nombre")
-    def nombre_capitalize(cls, v):
-        return v.strip().title()
 
-    @validator("nivel_educativo")
-    def validar_nivel(cls, v):
-        if v and v.lower() not in ["secundaria", "universitaria", "posgrado"]:
-            raise ValueError("Nivel educativo inválido")
-        return v
+# ==============================
+# 🔹 Generador de inquilinos demo
+# ==============================
+def generar_inquilino_demo():
+    nombres = [
+        "Andrés", "Camila", "Juan", "Valentina", "Mateo", "Laura", "Isabella", "Sofía",
+        "Mariana", "Sebastián", "Carlos", "Paula", "Gabriela", "Martín", "Lucía", "Diana",
+        "José", "Miguel", "Felipe", "Daniela", "Adriana", "Natalia", "Santiago", "Tomás"
+    ]
+    apellidos = [
+        "García", "Martínez", "Rodríguez", "López", "Hernández", "Gómez", "Díaz",
+        "Ramírez", "Torres", "Álvarez", "Castro", "Ortiz", "Jiménez", "Morales",
+        "Ruiz", "Cruz", "Mendoza", "Guerrero", "Pérez", "Fernández"
+    ]
 
-    @validator("musica_tipo")
-    def validar_musica(cls, v):
-        if v and len(v) < 3:
-            raise ValueError("El tipo de música debe tener al menos 3 caracteres")
-        return v
+    # 🔹 Nombre completo con probabilidad de doble nombre/apellido
+    nombre = random.choice(nombres)
+    if random.random() > 0.5:
+        nombre += f" {random.choice(nombres)}"
+    apellido = f"{random.choice(apellidos)} {random.choice(apellidos)}"
+    nombre_completo = f"{nombre} {apellido}"
 
-
-# =====================================================
-# 🔧 GENERADOR DE INQUILINOS DEMO
-# =====================================================
-def generar_inquilino_demo() -> dict:
-    nombres = ["Juan", "Ana", "Pedro", "Luisa", "Carlos", "Marta", "Felipe", "Sofía", "Andrés", "Camila"]
-    generos = ["masculino", "femenino", "otro"]
-    si_no = ["si", "no"]
-
-    # Datos base
-    inquilino = {
-        "id_inquilino": int(uuid.uuid4().int % 1000000),
-        "nombre": random.choice(nombres),
-        "edad": random.randint(18, 70),
-        "genero": random.choice(generos),
-        "fumador": random.choice(si_no),
-        "mascotas": random.choice(["con mascotas", "sin mascotas"]),
-        "orden": random.choice(["ordenada", "desordenada"]),
-        "deporte": random.choice(si_no),
-        "bioritmo": random.choice(["madrugador", "nocturno"]),
-        "nivel_educativo": random.choice(["secundaria", "universitaria", "posgrado"]),
-        "musica_tipo": random.choice(["rock", "pop", "salsa", "vallenato", "jazz"]),
-        "plan_perfecto": random.choice(["cine", "viajar", "leer", "salir con amigos"]),
-        "visitas": random.choice(si_no),
-        "personalidad": random.choice(["extrovertido", "introvertido", "neutral"]),
-        "instrumento": random.choice(si_no),
-    }
-
-    # 🎯 Regla de compatibilidad
-    puntaje = 0
-    if inquilino["fumador"] == "no":
-        puntaje += 1
-    if inquilino["orden"] == "ordenada":
-        puntaje += 1
-    if inquilino["mascotas"] == "sin mascotas":
-        puntaje += 1
-    if inquilino["deporte"] == "si":
-        puntaje += 1
-    if inquilino["bioritmo"] == "madrugador":
-        puntaje += 1
-
-    # Etiqueta: 1 compatible, 0 no compatible
-    inquilino["compatible"] = 1 if puntaje >= 3 else 0
-
-    return Inquilino(**inquilino).dict()
+    # Construcción del objeto Inquilino
+    return Inquilino(
+        nombre=nombre_completo,
+        edad=random.randint(15, 99),
+        genero=random.choice(["masculino", "femenino", "otro"]),
+        fumador=random.choice(["si", "no"]),
+        mascotas=random.choice(["con mascotas", "sin mascotas"]),
+        orden=random.choice(["ordenada", "desordenada"]),
+        deporte=random.choice(["si", "no"]),
+        bioritmo=random.choice(["madrugador", "nocturno"]),
+        nivel_educativo=random.choice(["secundaria", "universitaria", "posgrado", None]),
+        musica_tipo=random.choice(["rock", "pop", "salsa", "vallenato", "reggaeton", None]),
+        plan_perfecto=random.choice(["cine", "leer", "salir con amigos", "hacer deporte", None]),
+        visitas=random.choice(["si", "no"]),
+        personalidad=random.choice(["introvertido", "extrovertido", "equilibrado", None]),
+        instrumento=random.choice(["si", "no"]),
+        compatible=random.choice([0, 1])  # demo simple
+    )

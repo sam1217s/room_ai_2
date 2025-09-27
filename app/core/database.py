@@ -1,70 +1,58 @@
-# app/core/database.py
 import logging
 from pymongo import MongoClient, ASCENDING
-from .config import config
+from dotenv import load_dotenv
+import os
 
-logger = logging.getLogger(__name__)
+load_dotenv()
+logger = logging.getLogger("app.core.database")
 
 class DatabaseManager:
-    """Gestor de conexión y operaciones en MongoDB"""
-
     def __init__(self):
         try:
-            self.client = MongoClient(config.MONGO_URI)
-            self.db = self.client[config.MONGO_DB]
-            self.inquilinos_collection = self.db[config.MONGO_COLLECTION]
-            self._crear_indices()
-            logger.info(f"✅ Conectado a MongoDB: {config.MONGO_DB}.{config.MONGO_COLLECTION}")
+            self.client = MongoClient(os.getenv("MONGO_URI"))
+            self.db = self.client[os.getenv("MONGO_DB")]
+            self.inquilinos_collection = self.db[os.getenv("MONGO_COLLECTION")]
+
+            # Crear índices
+            self.inquilinos_collection.create_index([("id_inquilino", ASCENDING)], unique=True)
+            logger.info("📇 Índices creados exitosamente")
+            logger.info(f"✅ Conectado a MongoDB: {os.getenv('MONGO_DB')}.{os.getenv('MONGO_COLLECTION')}")
         except Exception as e:
             logger.error(f"❌ Error conectando a MongoDB: {e}")
-            raise
 
-    def _crear_indices(self):
-        """Crea índices para optimizar consultas"""
+    def insertar_inquilino(self, inquilino, log_individual=False):
         try:
-            self.inquilinos_collection.create_index([("nombre", ASCENDING)])
-            self.inquilinos_collection.create_index([("edad", ASCENDING)])
-            logger.info("📇 Índices creados exitosamente")
-        except Exception as e:
-            logger.warning(f"⚠️ Error creando índices: {e}")
+            if not isinstance(inquilino, dict):
+                inquilino = inquilino.dict()
 
-    # CRUD ==============================
-    def insertar_inquilino(self, inquilino: dict) -> str:
-        """Inserta un nuevo inquilino"""
-        try:
-            result = self.inquilinos_collection.insert_one(inquilino)
-            return str(result.inserted_id)
+            self.inquilinos_collection.insert_one(inquilino)
+
+            if log_individual:
+                logger.info(f"✅ Inquilino insertado: {inquilino.get('nombre')}")
         except Exception as e:
             logger.error(f"❌ Error insertando inquilino: {e}")
+
+    def buscar_inquilino(self, filtro):
+        try:
+            return self.inquilinos_collection.find_one(filtro)
+        except Exception as e:
+            logger.error(f"❌ Error buscando inquilino: {e}")
             return None
 
-    def obtener_todos_inquilinos(self) -> list:
-        """Devuelve todos los inquilinos"""
+    def obtener_todos_inquilinos(self):
+        """🔹 Devuelve todos los inquilinos de la colección"""
         try:
-            return list(self.inquilinos_collection.find())
+            return list(self.inquilinos_collection.find({}))
         except Exception as e:
             logger.error(f"❌ Error obteniendo inquilinos: {e}")
             return []
 
-    def obtener_estadisticas_db(self) -> dict:
-        """Estadísticas rápidas de la base de datos"""
+    def limpiar_inquilinos(self):
         try:
-            total = self.inquilinos_collection.count_documents({})
-            fumadores = self.inquilinos_collection.count_documents({"fumador": "si"})
-            mascotas = self.inquilinos_collection.count_documents({"mascotas": "con mascotas"})
-            return {
-                "total_inquilinos": total,
-                "fumadores": fumadores,
-                "con_mascotas": mascotas
-            }
+            self.inquilinos_collection.delete_many({})
+            logger.info("🧹 Colección limpiada correctamente")
         except Exception as e:
-            logger.error(f"❌ Error obteniendo estadísticas: {e}")
-            return {}
+            logger.error(f"❌ Error limpiando colección: {e}")
 
-# Instancia global
+# ✅ Instancia global para usar directo en otros módulos
 db_manager = DatabaseManager()
-
-# Alias para facilitar importaciones
-insertar_inquilino = db_manager.insertar_inquilino
-obtener_todos_inquilinos = db_manager.obtener_todos_inquilinos
-obtener_estadisticas_db = db_manager.obtener_estadisticas_db

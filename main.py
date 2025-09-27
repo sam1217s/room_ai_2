@@ -8,7 +8,7 @@ import streamlit as st
 import logging
 
 from app.core.config import config
-from app.core.database import db_manager
+from app.core.database import DatabaseManager   # ✅ usar la clase
 from app.core.ia_engine import MotorIA
 from app.components import dashboard, formulario, chatbot
 
@@ -26,6 +26,9 @@ st.set_page_config(
     page_icon="🏠",
     layout="wide",
 )
+
+# ✅ Instancia global de la base de datos
+db_manager = DatabaseManager()
 
 # ==============================
 # INICIALIZAR SISTEMA
@@ -70,7 +73,6 @@ def pantalla_formulario():
 
 def pantalla_chatbot():
     st.markdown("## 🤖 ChatBot de Compatibilidad")
-    # 🚀 Usar chatbot avanzado directamente
     chatbot.mostrar_chatbot_avanzado(st.session_state.motor_ia)
 
 def pantalla_configuracion():

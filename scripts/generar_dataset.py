@@ -1,21 +1,26 @@
-# scripts/generar_dataset.py
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import logging
+from dotenv import load_dotenv
+from tqdm import tqdm  # 🔥 Barra de progreso
 from app.core.database import DatabaseManager
 from app.core.inquilino_schema import generar_inquilino_demo
+
+# Cargar variables del .env
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("generar_dataset_demo")
 
 def main():
-    if len(sys.argv) < 2:
-        logger.error("❌ Debes indicar cuántos inquilinos generar. Ej: python scripts/generar_dataset.py 500")
-        sys.exit(1)
+    # 🔹 Leer cantidad desde argumento o desde .env
+    if len(sys.argv) > 1:
+        cantidad = int(sys.argv[1])
+    else:
+        cantidad = int(os.getenv("DATASET_SIZE", 100))  # default = 100
 
-    cantidad = int(sys.argv[1])
     db = DatabaseManager()
 
     # Limpieza de la colección antes de generar datos nuevos
@@ -23,11 +28,13 @@ def main():
     logger.info("🧹 Colección limpiada antes de insertar nuevos datos")
 
     logger.info(f"🎯 Generando {cantidad} inquilinos demo...")
+
     insertados = 0
-    for _ in range(cantidad):
+    # 🔥 Usamos tqdm para mostrar barra de progreso
+    for _ in tqdm(range(cantidad), desc="Progreso", unit="inquilinos"):
         try:
             inquilino = generar_inquilino_demo()
-            db.insertar_inquilino(inquilino)
+            db.insertar_inquilino(inquilino, log_individual=False)
             insertados += 1
         except Exception as e:
             logger.warning(f"⚠️ Inquilino descartado: {e}")
@@ -36,7 +43,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-

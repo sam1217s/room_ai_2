@@ -8,7 +8,7 @@ import re
 import random
 import logging
 
-from ..core.database import obtener_todos_inquilinos
+from app.core.database import db_manager
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def mostrar_chatbot_avanzado(motor_ia):
 def cargar_inquilinos_data():
     """Carga datos de inquilinos"""
     try:
-        data = obtener_todos_inquilinos()
+        data = db_manager.obtener_todos_inquilinos()
         if data:
             df = pd.DataFrame(data)
             if 'id_inquilino' in df.columns:
@@ -242,7 +242,6 @@ def agregar_mensaje(tipo, contenido, datos=None):
     
     if len(st.session_state.mensajes_chat) > 50:
         st.session_state.mensajes_chat = st.session_state.mensajes_chat[-50:]
-
 def generar_respuesta_avanzada(mensaje, motor_ia):
     """Genera respuesta AVANZADA con datos para gráficas"""
     
@@ -256,18 +255,23 @@ def generar_respuesta_avanzada(mensaje, motor_ia):
             datos_extra = {'tipo': 'estadisticas_detalladas', 'df': df}
             return respuesta, datos_extra
         
-        # Compatibilidad
+        # Compatibilidad entre 2 inquilinos
         numeros = re.findall(r'\d+', mensaje)
         if len(numeros) >= 2 and any(palabra in mensaje_lower for palabra in ['compatibilidad', 'compatible', 'analiz']):
             respuesta = generar_compatibilidad_detallada(int(numeros[0]), int(numeros[1]), df, motor_ia)
             return respuesta, None
         
-        # Recomendaciones
+        # Recomendaciones individuales
         elif len(numeros) >= 1 and any(palabra in mensaje_lower for palabra in ['recomenda', 'match', 'mejor']):
             respuesta = generar_recomendaciones_detalladas(int(numeros[0]), df, motor_ia)
             return respuesta, None
+
+        # 🔥 Grupos de inquilinos compatibles
+        elif any(palabra in mensaje_lower for palabra in ['grupo', 'armar grupo']):
+            respuesta = generar_grupo_compatible(mensaje_lower, df, motor_ia)
+            return respuesta, None
         
-        # Búsquedas
+        # Búsquedas simples
         elif any(palabra in mensaje_lower for palabra in ['busca', 'encuentra', 'filtra']):
             respuesta = generar_busqueda_detallada(mensaje_lower, df)
             return respuesta, None
@@ -582,24 +586,31 @@ def generar_recomendaciones_detalladas(id_inquilino, df, motor_ia):
         if len(otros_inquilinos) == 0:
             return "❌ No hay otros inquilinos para generar recomendaciones."
         
-        # Calcular compatibilidades detalladas
+        # Calcular compatibilidades detalladas con TODOS los inquilinos
         recomendaciones = []
-        
-        for _, otro in otros_inquilinos.head(20).iterrows():
+        for _, otro in otros_inquilinos.iterrows():
             try:
                 if motor_ia and motor_ia.is_trained:
                     try:
-                        resultado = motor_ia.calcular_compatibilidad_avanzada(id_inquilino, otro['id_inquilino'], df)
+                        resultado = motor_ia.calcular_compatibilidad_avanzada(
+                            id_inquilino, otro['id_inquilino'], df
+                        )
                         if 'error' not in resultado:
                             compatibilidad = resultado['compatibilidad_porcentaje']
                         else:
-                            compatibilidad = calcular_compatibilidad_simple(id_inquilino, otro['id_inquilino'], df)
+                            compatibilidad = calcular_compatibilidad_simple(
+                                id_inquilino, otro['id_inquilino'], df
+                            )
                     except:
-                        compatibilidad = calcular_compatibilidad_simple(id_inquilino, otro['id_inquilino'], df)
+                        compatibilidad = calcular_compatibilidad_simple(
+                            id_inquilino, otro['id_inquilino'], df
+                        )
                 else:
-                    compatibilidad = calcular_compatibilidad_simple(id_inquilino, otro['id_inquilino'], df)
+                    compatibilidad = calcular_compatibilidad_simple(
+                        id_inquilino, otro['id_inquilino'], df
+                    )
                 
-                # Analizar factores en común
+                # Analizar factores en común y diferencias
                 factores_comunes = obtener_factores_comunes(inquilino_base, otro)
                 diferencias_clave = obtener_diferencias_clave(inquilino_base, otro)
                 
@@ -615,7 +626,7 @@ def generar_recomendaciones_detalladas(id_inquilino, df, motor_ia):
             except:
                 continue
         
-        # Ordenar por compatibilidad
+        # Ordenar por compatibilidad descendente
         recomendaciones.sort(key=lambda x: x['compatibilidad'], reverse=True)
         
         # Generar respuesta limpia SIN ASTERISCOS
@@ -625,7 +636,7 @@ def generar_recomendaciones_detalladas(id_inquilino, df, motor_ia):
 • Edad: {inquilino_base.get('edad', 'N/A')} años
 • Características: {obtener_perfil_resumen(inquilino_base)}
 
-🎯 TOP 5 MATCHES RECOMENDADOS:
+🎯 TOP 5 MATCHES REALES:
 """
         
         for i, rec in enumerate(recomendaciones[:5], 1):
@@ -641,13 +652,14 @@ def generar_recomendaciones_detalladas(id_inquilino, df, motor_ia):
 """
         
         # Análisis estadístico
-        avg_compatibility = sum(r['compatibilidad'] for r in recomendaciones[:10]) / min(len(recomendaciones), 10)
+        top_10 = recomendaciones[:10]
+        avg_compatibility = sum(r['compatibilidad'] for r in top_10) / len(top_10) if top_10 else 0
         mejores_opciones = len([r for r in recomendaciones if r['compatibilidad'] >= 70])
         
         respuesta += f"""
 📈 ANÁLISIS ESTADÍSTICO:
-• Compatibilidad promedio: {avg_compatibility:.1f}%
-• Mejores opciones disponibles: {mejores_opciones}
+• Compatibilidad promedio (Top 10): {avg_compatibility:.1f}%
+• Mejores opciones disponibles (>=70%): {mejores_opciones}
 • Recomendación del sistema: {'Excelentes opciones disponibles' if avg_compatibility >= 60 else 'Opciones moderadas, evaluar cuidadosamente'}
 
 💡 Analiza en detalle cualquier pareja específica para obtener más información
@@ -659,12 +671,19 @@ def generar_recomendaciones_detalladas(id_inquilino, df, motor_ia):
         return f"❌ Error generando recomendaciones detalladas: {str(e)}"
 
 def generar_busqueda_detallada(mensaje, df):
-    """Búsqueda DETALLADA con análisis"""
+    """Búsqueda DETALLADA con cantidad opcional y filtro de compatibilidad"""
     
     if df.empty:
         return "❌ No hay inquilinos registrados para buscar."
     
-    # Mapear términos de búsqueda expandido
+    # 1️⃣ Detectar cantidad solicitada en el mensaje
+    numeros = re.findall(r'\d+', mensaje)
+    cantidad = int(numeros[0]) if numeros else 15  # por defecto 15
+    
+    # 2️⃣ Detectar si pide "compatibles"
+    solo_compatibles = "compatible" in mensaje or "compatibles" in mensaje
+    
+    # 3️⃣ Mapear términos de búsqueda
     busquedas = {
         'fumador': ('fumador', 'si'),
         'no fumador': ('fumador', 'no'),
@@ -681,62 +700,46 @@ def generar_busqueda_detallada(mensaje, df):
         'introvertido': ('personalidad', 'introvertido')
     }
     
-    # Encontrar término
-    campo = None
-    valor = None
-    termino_usado = None
-    
+    campo, valor, termino_usado = None, None, None
     for termino, (c, v) in busquedas.items():
         if termino in mensaje:
-            campo = c
-            valor = v
-            termino_usado = termino
+            campo, valor, termino_usado = c, v, termino
             break
     
     if not campo:
         return "❓ No entendí qué característica buscas. Intenta con: fumadores, deportistas, ordenados, nocturnos, universitarios, etc."
     
-    try:
-        if campo not in df.columns:
-            return f"❌ No tengo información sobre '{campo}' en la base de datos."
-        
-        resultados = df[df[campo] == valor]
-        total_inquilinos = len(df)
-        
-        if len(resultados) == 0:
-            return f"❌ No encontré inquilinos con la característica '{termino_usado}'"
-        
-        # Análisis estadístico
-        porcentaje = (len(resultados) / total_inquilinos) * 100
-        edad_promedio = resultados['edad'].mean() if 'edad' in resultados else 0
-        
-        respuesta = f"""🔍 **BÚSQUEDA DETALLADA: {termino_usado.upper()}S**
+    # 4️⃣ Filtrar en DataFrame
+    resultados = df[df[campo] == valor]
+    
+    if solo_compatibles and "compatible" in df.columns:
+        resultados = resultados[resultados["compatible"] == 1]
+    
+    total = len(resultados)
+    
+    if total == 0:
+        return f"❌ No encontré inquilinos con la característica '{termino_usado}'"
+    
+    # 5️⃣ Preparar respuesta
+    respuesta = f"""🔍 BÚSQUEDA DETALLADA: {termino_usado.upper()}S{" COMPATIBLES" if solo_compatibles else ""}
 
-📊 **ESTADÍSTICAS:**
-• **Total encontrados**: {len(resultados)} de {total_inquilinos} inquilinos ({porcentaje:.1f}%)
-• **Edad promedio**: {edad_promedio:.1f} años
-• **Representatividad**: {'Alta' if porcentaje > 40 else 'Media' if porcentaje > 20 else 'Baja'}
+📊 ESTADÍSTICAS:
+• Total encontrados: {total} de {len(df)} inquilinos ({(total/len(df))*100:.1f}%)
+• Edad promedio: {resultados['edad'].mean():.1f} años
+• Representatividad: {'Alta' if total/len(df) > 0.4 else 'Media' if total/len(df) > 0.2 else 'Baja'}
 
-👥 **INQUILINOS ENCONTRADOS:**
+👥 INQUILINOS ENCONTRADOS (máx {cantidad}):
 """
-        
-        for _, inquilino in resultados.head(15).iterrows():
-            edad = inquilino.get('edad', 'N/A')
-            perfil = obtener_perfil_resumen(inquilino)
-            respuesta += f"• **{inquilino['nombre']}** (ID: {inquilino['id_inquilino']}) - {edad} años - {perfil}\n"
-        
-        if len(resultados) > 15:
-            respuesta += f"\n... y {len(resultados) - 15} más."
-        
-        # Características adicionales del grupo
-        if len(resultados) > 1:
-            respuesta += f"\n\n🔍 **CARACTERÍSTICAS DEL GRUPO:**"
-            respuesta += obtener_analisis_grupo(resultados)
-        
-        return respuesta
-        
-    except Exception as e:
-        return f"❌ Error en la búsqueda detallada: {str(e)}"
+    
+    for _, inquilino in resultados.head(cantidad).iterrows():
+        edad = inquilino.get('edad', 'N/A')
+        perfil = obtener_perfil_resumen(inquilino)
+        respuesta += f"• {inquilino['nombre']} (ID: {inquilino['id_inquilino']}) - {edad} años - {perfil}\n"
+    
+    if total > cantidad:
+        respuesta += f"\n... y {total - cantidad} más."
+    
+    return respuesta
 
 def generar_ayuda_detallada():
     """Ayuda COMPLETA del sistema"""
@@ -803,44 +806,63 @@ def generar_respuesta_generica_mejorada(mensaje, numeros):
 # ============================================================================
 
 def calcular_compatibilidad_simple(id1, id2, df):
-    """Cálculo de compatibilidad MEJORADO"""
+    """Cálculo de compatibilidad mejorado usando TODOS los campos."""
     try:
         row1 = df[df['id_inquilino'] == id1].iloc[0]
         row2 = df[df['id_inquilino'] == id2].iloc[0]
-        
-        # Factores con pesos diferentes
+
+        # Factores principales con pesos altos
         factores_pesos = {
-            'fumador': 0.25,
-            'orden': 0.20,
-            'bioritmo': 0.20,
-            'mascotas': 0.15,
+            'fumador': 0.20,
+            'orden': 0.15,
+            'bioritmo': 0.15,
+            'mascotas': 0.10,
             'deporte': 0.10,
             'visitas': 0.05,
-            'personalidad': 0.05
+            'personalidad': 0.10,
+            'edad': 0.10
         }
-        
+
+        # Factores blandos con pesos menores
+        factores_pesos_extra = {
+            'nivel_educativo': 0.02,
+            'musica_tipo': 0.02,
+            'plan_perfecto': 0.02,
+            'instrumento': 0.02,
+            'rol': 0.02
+        }
+
         compatibilidad_total = 0
         peso_total = 0
-        
+
+        # Comparación de factores principales
         for factor, peso in factores_pesos.items():
+            if factor == "edad":
+                if 'edad' in row1 and 'edad' in row2:
+                    diff_edad = abs(int(row1['edad']) - int(row2['edad']))
+                    similitud_edad = max(0, (20 - diff_edad) / 20)  # tolerancia 20 años
+                    compatibilidad_total += similitud_edad * peso
+                    peso_total += peso
+            elif factor in row1.index and factor in row2.index:
+                peso_total += peso
+                if str(row1[factor]).lower() == str(row2[factor]).lower():
+                    compatibilidad_total += peso
+
+        # Comparación de factores blandos (similitud básica)
+        for factor, peso in factores_pesos_extra.items():
             if factor in row1.index and factor in row2.index:
                 peso_total += peso
-                if row1[factor] == row2[factor]:
+                val1 = str(row1[factor]).strip().lower()
+                val2 = str(row2[factor]).strip().lower()
+                if val1 and val2 and val1 == val2:
                     compatibilidad_total += peso
-        
+
         if peso_total == 0:
             return 50.0
-        
-        # Bonus por edad similar
-        if 'edad' in row1.index and 'edad' in row2.index:
-            diff_edad = abs(row1['edad'] - row2['edad'])
-            bonus_edad = max(0, (10 - diff_edad) / 10) * 0.1
-            compatibilidad_total += bonus_edad
-            peso_total += 0.1
-        
-        return min(95.0, (compatibilidad_total / peso_total) * 100)
-        
-    except:
+
+        return round((compatibilidad_total / peso_total) * 100, 1)
+
+    except Exception:
         return 50.0
 
 def obtener_perfil_predominante(df):
@@ -944,15 +966,32 @@ def obtener_factores_comunes(inquilino1, inquilino2):
     return comunes
 
 def obtener_diferencias_clave(inquilino1, inquilino2):
-    """Identifica diferencias clave entre dos inquilinos"""
-    factores = ['fumador', 'mascotas', 'orden', 'deporte', 'bioritmo']
+    """
+    Devuelve lista de diferencias relevantes entre dos inquilinos.
+    Incluye factores fuertes, blandos y edad.
+    """
     diferencias = []
-    
+
+    # Factores fuertes + blandos
+    factores = [
+        'fumador', 'mascotas', 'orden', 'deporte', 'bioritmo', 'visitas',
+        'personalidad', 'nivel_educativo', 'musica_tipo', 
+        'plan_perfecto', 'instrumento', 'rol'
+    ]
+
     for factor in factores:
         if factor in inquilino1.index and factor in inquilino2.index:
-            if inquilino1[factor] != inquilino2[factor]:
-                diferencias.append(f"{factor}")
-    
+            v1 = str(inquilino1[factor]).strip()
+            v2 = str(inquilino2[factor]).strip()
+            if v1 and v2 and v1.lower() != v2.lower():
+                diferencias.append(f"{factor}: {v1} vs {v2}")
+
+    # Edad como diferencia explícita
+    if 'edad' in inquilino1.index and 'edad' in inquilino2.index:
+        e1, e2 = int(inquilino1['edad']), int(inquilino2['edad'])
+        if e1 != e2:
+            diferencias.append(f"edad: {e1} vs {e2}")
+
     return diferencias
 
 def obtener_perfil_resumen(inquilino):
@@ -996,3 +1035,75 @@ def obtener_analisis_grupo(grupo_df):
                     analisis.append(f"Predominantemente {moda.iloc[0]} en {factor}")
     
     return "\n• " + "\n• ".join(analisis) if analisis else "\nGrupo diverso sin características predominantes"
+
+def generar_grupo_compatible(mensaje, df, motor_ia=None):
+    """
+    Genera un grupo de N inquilinos que cumplen una condición
+    (ej: deportistas, fumadores) y que además son compatibles entre sí.
+    """
+    import re
+    
+    if df.empty:
+        return "❌ No hay inquilinos registrados en la base."
+    
+    # Detectar cantidad pedida (default = 10)
+    numeros = re.findall(r'\d+', mensaje)
+    cantidad = int(numeros[0]) if numeros else 10
+    
+    # Mapear características
+    filtros = {
+        "deportista": ("deporte", "si"),
+        "fumador": ("fumador", "si"),
+        "ordenado": ("orden", "ordenada"),
+        "madrugador": ("bioritmo", "madrugador"),
+        "nocturno": ("bioritmo", "nocturno"),
+    }
+    
+    campo, valor = None, None
+    for termino, (c, v) in filtros.items():
+        if termino in mensaje:
+            campo, valor = c, v
+            break
+    
+    if not campo:
+        return "❓ No entendí qué grupo deseas. Ej: 'busca 10 inquilinos deportistas compatibles'."
+    
+    # Filtrar candidatos
+    candidatos = df[df[campo] == valor]
+    
+    if "compatible" in mensaje and "compatible" in df.columns:
+        candidatos = candidatos[candidatos["compatible"] == 1]
+    
+    if len(candidatos) < cantidad:
+        return f"⚠️ Solo encontré {len(candidatos)} inquilinos que cumplen el filtro."
+    
+    # Calcular compatibilidad promedio de cada inquilino con el resto
+    puntajes = []
+    for _, row in candidatos.iterrows():
+        comp_sum, count = 0, 0
+        for _, other in candidatos.iterrows():
+            if row["id_inquilino"] != other["id_inquilino"]:
+                compat = calcular_compatibilidad_simple(
+                    row["id_inquilino"], other["id_inquilino"], df
+                )
+                comp_sum += compat
+                count += 1
+        if count > 0:
+            puntajes.append((row, comp_sum / count))
+    
+    # Ordenar por compatibilidad
+    puntajes.sort(key=lambda x: x[1], reverse=True)
+    top_group = puntajes[:cantidad]
+    
+    # Respuesta
+    respuesta = f"""🔍 GRUPO DE {cantidad} INQUILINOS {campo.upper()}S COMPATIBLES ENTRE SÍ
+
+📊 Compatibilidad grupal promedio: {sum(s[1] for s in top_group)/len(top_group):.1f}%
+
+👥 Inquilinos seleccionados:
+"""
+    for row, score in top_group:
+        perfil = obtener_perfil_resumen(row)
+        respuesta += f"• {row['nombre']} (ID: {row['id_inquilino']}) - {row['edad']} años - Compatibilidad media: {score:.1f}% - {perfil}\n"
+    
+    return respuesta

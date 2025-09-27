@@ -2,7 +2,7 @@
 import streamlit as st
 from datetime import datetime
 from app.core.inquilino_schema import Inquilino
-from app.core.database import insertar_inquilino, obtener_todos_inquilinos
+from app.core.database import db_manager
 
 
 def _generar_id_automatico() -> int:
@@ -11,7 +11,7 @@ def _generar_id_automatico() -> int:
     Si no hay registros, vuelve 1. Tiene un fallback seguro.
     """
     try:
-        datos = obtener_todos_inquilinos()
+        datos = db_manager.obtener_todos_inquilinos()  # ✅ corregido
         if not datos:
             return 1
         max_id = max(int(doc.get("id_inquilino", 0)) for doc in datos)
@@ -52,6 +52,7 @@ def mostrar_formulario_registro():
 
         with col1:
             nombre = st.text_input("👤 Nombre completo")
+            cedula = st.text_input("🆔 Número de cédula")
             edad = st.slider("🎂 Edad", min_value=0, max_value=100, value=25)
             genero = st.selectbox("⚧ Género", ["masculino", "femenino", "otro"])
             fumador = st.radio("🚬 ¿Fumador?", ["si", "no"], horizontal=True)
@@ -82,6 +83,7 @@ def mostrar_formulario_registro():
                 payload = {
                     "id_inquilino": nuevo_id,
                     "nombre": nombre,
+                    "cedula": int(cedula) if cedula else None,
                     "edad": edad,
                     "genero": genero,
                     "fumador": fumador,
@@ -98,14 +100,14 @@ def mostrar_formulario_registro():
                     "created_at": datetime.utcnow(),
                 }
 
-                # Calcular etiqueta compatible (requerida por el esquema/modelo)
+                # Calcular etiqueta compatible
                 payload["compatible"] = _calcular_compatible_regla_simple(payload)
 
-                # Validar con Pydantic (Inquilino exige id_inquilino y compatible)
+                # Validar con Pydantic
                 nuevo_inquilino = Inquilino(**payload)
 
                 # Insertar en MongoDB
-                insertar_inquilino(nuevo_inquilino.dict())
+                db_manager.insertar_inquilino(nuevo_inquilino.dict())  # ✅ corregido
                 st.success(
                     f"🎉 Inquilino **{nuevo_inquilino.nombre}** registrado con ID **{nuevo_inquilino.id_inquilino}**. "
                     f"(compatible={nuevo_inquilino.compatible})"
